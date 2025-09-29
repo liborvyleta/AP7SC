@@ -1,10 +1,14 @@
+import os
+
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import os
 # =======================
 # Načtení dat
 # =======================
 df = pd.read_csv("Coffe_sales.csv")
+
+os.makedirs("grafy", exist_ok=True)
 
 # =======================
 # Graf 1: Četnost jednotlivých druhů kávy
@@ -16,6 +20,7 @@ plt.xlabel("Druh kávy")
 plt.ylabel("Počet prodaných kusů")
 plt.xticks(rotation=45, ha="right")
 plt.tight_layout()
+plt.savefig("grafy/graf1_cetnost_druhu.png")
 plt.show()
 
 # =======================
@@ -28,6 +33,7 @@ plt.title("Průměrná cena kávy podle denní doby")
 plt.xlabel("Denní doba")
 plt.ylabel("Průměrná cena")
 plt.tight_layout()
+plt.savefig("grafy/graf2_prumerna_cena_doba.png")
 plt.show()
 # =======================
 # Graf 3: Průměrná cena kávy podle typu
@@ -41,6 +47,7 @@ plt.xlabel("Druh kávy")
 plt.ylabel("Průměrná cena")
 plt.xticks(rotation=45, ha="right")
 plt.tight_layout()
+plt.savefig("grafy/graf3_prumerna_cena_typ.png")
 plt.show()
 
 # =======================
@@ -55,6 +62,7 @@ plt.xlabel("Hodina dne")
 plt.ylabel("Celkové tržby")
 plt.grid(True)
 plt.tight_layout()
+plt.savefig("grafy/graf4_rytmus_hodiny.png")
 plt.show()
 
 # =======================
@@ -69,6 +77,7 @@ plt.title("Prodeje podle dne v týdnu")
 plt.xlabel("Den v týdnu")
 plt.ylabel("Celkové tržby")
 plt.tight_layout()
+plt.savefig("grafy/graf5_prodeje_dny.png")
 plt.show()
 
 # =======================
@@ -84,6 +93,7 @@ plt.xlabel("Měsíc")
 plt.ylabel("Celkové tržby")
 plt.xticks(rotation=45)
 plt.tight_layout()
+plt.savefig("grafy/graf6_prodeje_mesice.png")
 plt.show()
 
 # =======================
@@ -98,4 +108,5 @@ plt.xlabel("Druh kávy")
 plt.ylabel("Celkové tržby")
 plt.xticks(rotation=45, ha="right")
 plt.tight_layout()
+plt.savefig("grafy/graf7_obrat_typ.png")
 plt.show()
