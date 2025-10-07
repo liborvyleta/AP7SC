@@ -7,6 +7,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 import os
+from sklearn.metrics import accuracy_score
 
 df = pd.read_csv("weatherAUS.csv")
 
@@ -65,4 +66,50 @@ cm_knn = confusion_matrix(y, y_pred_knn)
 ConfusionMatrixDisplay(cm_knn, display_labels=["No", "Yes"]).plot(cmap="Greens")
 plt.title("Confusion Matrix - kNN")
 plt.savefig("grafy/confusion_matrix_kNN.png", dpi=300, bbox_inches="tight")
+plt.show()
+
+results = {
+    "Model": ["Gaussian Naive Bayes", "k-Nearest Neighbours (k=7)"],
+    "Accuracy": [
+        accuracy_score(y, y_pred_gnb),
+        accuracy_score(y, y_pred_knn)
+    ],
+    "Precision (Yes)": [
+        classification_report(y, y_pred_gnb, output_dict=True)["1"]["precision"],
+        classification_report(y, y_pred_knn, output_dict=True)["1"]["precision"]
+    ],
+    "Recall (Yes)": [
+        classification_report(y, y_pred_gnb, output_dict=True)["1"]["recall"],
+        classification_report(y, y_pred_knn, output_dict=True)["1"]["recall"]
+    ],
+    "F1-score (Yes)": [
+        classification_report(y, y_pred_gnb, output_dict=True)["1"]["f1-score"],
+        classification_report(y, y_pred_knn, output_dict=True)["1"]["f1-score"]
+    ]
+}
+
+# Vytvoření DataFrame
+results_df = pd.DataFrame(results)
+results_df = results_df.round(3)
+
+print("\n=== Shrnutí klasifikátorů ===")
+print(results_df)
+
+os.makedirs("vysledky", exist_ok=True)
+results_df.to_csv("vysledky/classifier_summary.csv", index=False)
+
+fig, ax = plt.subplots(figsize=(12, 4))
+ax.axis("off")
+tbl = ax.table(
+    cellText=results_df.values,
+    colLabels=results_df.columns,
+    cellLoc="center",
+    loc="center"
+)
+tbl.auto_set_font_size(False)
+tbl.set_fontsize(14)
+tbl.scale(1.8, 2.2)
+plt.subplots_adjust(left=0.05, right=0.95, top=0.8, bottom=0.1)
+plt.title("Shrnutí výkonu klasifikátorů", fontsize=16, pad=20)
+plt.savefig("vysledky/classifier_summary.png", dpi=300, bbox_inches="tight")
 plt.show()
