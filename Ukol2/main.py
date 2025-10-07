@@ -6,6 +6,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
+import os
 
 df = pd.read_csv("weatherAUS.csv")
 
@@ -36,6 +37,9 @@ X_scaled = scaler.fit_transform(X)
 
 cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=42)
 
+# Vytvoření adresáře pro uložení grafů, pokud neexistuje
+os.makedirs("grafy", exist_ok=True)
+
 # Gaussian Naive Bayes
 
 gnb = GaussianNB()
@@ -47,6 +51,7 @@ print(classification_report(y, y_pred_gnb))
 cm_gnb = confusion_matrix(y, y_pred_gnb)
 ConfusionMatrixDisplay(cm_gnb, display_labels=["No", "Yes"]).plot(cmap="Blues")
 plt.title("Confusion Matrix - GaussianNB")
+plt.savefig("grafy/confusion_matrix_GaussianNB.png", dpi=300, bbox_inches="tight")
 plt.show()
 
 # k-Nearest Neighbours
@@ -59,4 +64,5 @@ print(classification_report(y, y_pred_knn))
 cm_knn = confusion_matrix(y, y_pred_knn)
 ConfusionMatrixDisplay(cm_knn, display_labels=["No", "Yes"]).plot(cmap="Greens")
 plt.title("Confusion Matrix - kNN")
+plt.savefig("grafy/confusion_matrix_kNN.png", dpi=300, bbox_inches="tight")
 plt.show()
