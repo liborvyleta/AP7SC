@@ -280,13 +280,13 @@ def test_pagerank_print():
         (4, 3)
     ]
     print('\n' + '=' * 60)
-    print('🔹 TESTOVACÍ DATA – ukázka r(0) → r(5)')
+    print('🔹 TESTOVACÍ DATA – ukázka r(0) → r(50)')
     print('=' * 60)
 
     pages = sorted(set([src for src, dst in test_links] + [dst for src, dst in test_links]))
     N = len(pages)
 
-    # sestavíme M a A jako v zadání a vyprintujeme prvních 5 iterací
+    # sestavíme M a A jako v zadání
     index = {p: i for i, p in enumerate(pages)}
     M = np.zeros((N, N))
     out_degree = defaultdict(int)
@@ -301,15 +301,27 @@ def test_pagerank_print():
     E = np.ones((N, N))
     A = beta * M + (1 - beta) * (1 / N) * E
 
-    r = np.ones(N) / N
-    print(f'r(0): {np.round(r, 8)}')
-    for t in range(1, 6):
-        r = A @ r
-        print(f'r({t}): {np.round(r, 8)}')
+    # r(0)
+    r0 = np.ones(N) / N
+    print(f'r(0): {np.round(r0, 8)}')
 
-    print('\n📊 Výsledné ranky (po 5. iteraci):')
+    # provést 50 iterací (r(50)) a ověřit součet
+    iterations = 50
+    r = r0.copy()
+    for t in range(1, iterations + 1):
+        r = A @ r
+
+    print(f'r({iterations}): {np.round(r, 8)}')
+
+    print(f'\n📊 Výsledné ranky (po {iterations}. iteraci):')
     for page_num, score in sorted(zip(pages, r), key=lambda x: -x[1]):
         print(f'  Stránka {page_num}: {score:.6f}')
+
+    total = float(np.sum(r))
+    print(f'\nSuma PageRanků: {total:.12f}')
+    # ověření, že suma je přibližně 1 (malé numerické odchylky povoleny)
+    assert abs(total - 1.0) < 1e-9, f'Suma PageRanků není 1 (hodnota: {total})'
+    print('✅ Test: suma PageRank hodnot je ≈ 1 (ok)')
 
 
 def main():
@@ -360,19 +372,31 @@ def main():
     print('=' * 60)
 
     ranking = pagerank(dataset, beta=0.85, iterations=args.iterations)
-    sorted_rank = sorted(ranking.items(), key=lambda x: -x[1])
 
-    # Uložit výsledky PageRank do CSV
+    # Uložit výsledky PageRank do CSV (vždy vytvoříme soubor s hlavičkou, i když je prázdný)
     try:
         import csv
         with open('pagerank.csv', 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow(['url', 'pagerank'])
-            for url, score in sorted_rank:
-                writer.writerow([url, score])
+            if ranking:
+                sorted_rank = sorted(ranking.items(), key=lambda x: -x[1])
+                for url, score in sorted_rank:
+                    writer.writerow([url, score])
         print("\n💾 PageRank výsledky uloženy do: pagerank.csv")
     except Exception as e:
         print(f"⚠️ Chyba při ukládání PageRank výsledků: {e}")
+
+    # Pokud není žádný výsledek, ošetříme výstup a vyhneme se numpy warnings
+    if not ranking:
+        print('\n⚠️  Nebyly nalezeny žádné stránky pro výpočet PageRanku. Plné výstupy jsou přeskočeny.')
+        print('\n📊 Statistiky:')
+        print(f'   Celkový počet stránek: 0')
+        print(f'   Suma PageRanků: 0.000000')
+        print(f'   Průměrný PageRank: 0.000000')
+        return
+
+    sorted_rank = sorted(ranking.items(), key=lambda x: -x[1])
 
     # Vykreslení grafu top 20 (pokud matplotlib je dostupný)
     try:
