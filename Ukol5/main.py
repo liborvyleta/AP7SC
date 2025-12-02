@@ -1,3 +1,4 @@
+# python
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -21,64 +22,82 @@ else:
 print("Načítám MNIST dataset... (chvilku to potrvá)")
 X, y = fetch_openml('mnist_784', version=1, return_X_y=True, as_frame=False)
 
-# Náhodný výběr vzorku
+# Reproducibilita a náhodný výběr vzorku
+np.random.seed(42)
 data_size = 3000
 indices = np.random.choice(X.shape[0], data_size, replace=False)
 X_subset = X[indices]
 y_subset = y[indices].astype(int)
 
-# Normalizace dat
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X_subset)
-
 print(f"Pracuji s {data_size} náhodnými vzorky.")
+
+# Rozdělíme data na trénink/test před škálováním, aby nedocházelo k úniku informací
+X_train, X_test, y_train, y_test = train_test_split(
+    X_subset, y_subset, test_size=0.3, random_state=42, stratify=y_subset
+)
+
+# Normalizace: fitujeme jen na tréninku a transformujeme test
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Pro vizualizace spojíme opět dohromady (to NEpoužíváme pro trénink/classifikaci)
+X_scaled_full = np.vstack([X_train_scaled, X_test_scaled])
+y_full = np.concatenate([y_train, y_test])
 
 # --- ČÁST 1: VIZUALIZACE (PCA vs t-SNE) ---
 
-print("Počítám PCA...")
+print("Počítám PCA (fit na tréninku, transform na obou)...")
 pca = PCA(n_components=2)
-X_pca = pca.fit_transform(X_scaled)
+X_pca_train = pca.fit_transform(X_train_scaled)
+X_pca_test = pca.transform(X_test_scaled)
+X_pca_full = np.vstack([X_pca_train, X_pca_test])
 
-print("Počítám t-SNE...")
-# Opraveno: odstraněn parametr n_iter, který dělal problémy
-tsne = TSNE(n_components=2, perplexity=30, random_state=42)
-X_tsne = tsne.fit_transform(X_scaled)
+print("Počítám t-SNE (pouze pro vizualizaci na celém škálovaném setu)...")
+# POZOR: t-SNE nemá transform => nelze bezpečně transformovat test bez úniku.
+# Proto jej používáme jen pro vizualizaci celé množiny (nikoliv pro korektní hodnocení klasifikátoru).
+tsne = TSNE(n_components=2, perplexity=30, init='pca', learning_rate='auto', random_state=42)
+X_tsne_full = tsne.fit_transform(X_scaled_full)
 
 
 # Funkce pro vykreslení a uložení
-def plot_reduction(X_data, y_data, title, filename):
+def plot_reduction(X_data, y_data, title, filename, point_size=20, alpha=0.6):
     plt.figure(figsize=(10, 8))
+    # převedeme štítky na stringy / kategorie, aby seaborn vytvořil diskretní legendu (nikoliv colorbar)
+    y_cat = y_data.astype(str)
     sns.scatterplot(
         x=X_data[:, 0], y=X_data[:, 1],
-        hue=y_data,
+        hue=y_cat,
         palette=sns.color_palette("tab10", 10),
         legend="full",
-        alpha=0.7
+        alpha=alpha,
+        s=point_size,
+        edgecolor='none'
     )
     plt.title(title)
     plt.xlabel('Komponenta 1')
     plt.ylabel('Komponenta 2')
-    plt.legend(title='Číslice')
+    plt.legend(title='Číslice', bbox_to_anchor=(1.02, 1), loc='upper left')
 
     # Uložení grafu
     save_path = os.path.join(output_dir, filename)
-    plt.savefig(save_path)
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
     print(f"Graf uložen: {save_path}")
+    plt.close()
 
-    plt.show()
 
-
-# Vykreslení grafů
-plot_reduction(X_pca, y_subset, "PCA vizualizace MNIST (2D)", "mnist_pca.png")
-plot_reduction(X_tsne, y_subset, "t-SNE vizualizace MNIST (2D)", "mnist_tsne.png")
+# Vykreslení grafů (menší body a průhlednost pro lepší čitelnost)
+plot_reduction(X_pca_full, y_full, "PCA vizualizace MNIST (2D)", "mnist_pca.png", point_size=20, alpha=0.6)
+plot_reduction(X_tsne_full, y_full, "t-SNE vizualizace MNIST (2D)", "mnist_tsne.png", point_size=20, alpha=0.6)
 
 
 # --- ČÁST 2: k-NN KLASIFIKACE A HLEDÁNÍ NEJLEPŠÍHO K ---
 
-def find_best_knn(X_data, y_data, dataset_name, file_suffix):
-    print(f"--- Hledám nejlepší k pro: {dataset_name} ---")
+# upravíme find_best_knn, aby pracoval s rozdělenými daty (bez opětovného splitu)
 
-    X_train, X_test, y_train, y_test = train_test_split(X_data, y_data, test_size=0.3, random_state=42)
+def find_best_knn_split(X_train, X_test, y_train, y_test, dataset_name, file_suffix):
+    print(f"--- Hledám nejlepší k pro: {dataset_name} ---")
 
     k_values = range(1, 21, 2)
     best_k = 0
@@ -107,17 +126,17 @@ def find_best_knn(X_data, y_data, dataset_name, file_suffix):
 
     # Uložení grafu přesnosti
     save_path = os.path.join(output_dir, f"knn_accuracy_{file_suffix}.png")
-    plt.savefig(save_path)
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
     print(f"Graf přesnosti uložen: {save_path}")
+    plt.close()
 
-    plt.show()
 
+# 1. k-NN na Originálních datech (škálovaných, ale bez úniku)
+find_best_knn_split(X_train_scaled, X_test_scaled, y_train, y_test, "Originální data (784D)", "original")
 
-# 1. k-NN na Originálních datech
-find_best_knn(X_scaled, y_subset, "Originální data (784D)", "original")
+# 2. k-NN na PCA datech (fitováno a transformováno bez úniku)
+find_best_knn_split(X_pca_train, X_pca_test, y_train, y_test, "PCA data (2D)", "pca")
 
-# 2. k-NN na PCA datech
-find_best_knn(X_pca, y_subset, "PCA data (2D)", "pca")
-
-# 3. k-NN na t-SNE datech
-find_best_knn(X_tsne, y_subset, "t-SNE data (2D)", "tsne")
+# 3. k-NN na t-SNE datech: vynecháme korektní hodnocení, protože t-SNE nemá transformaci (viz komentář)
+print("k-NN na t-SNE vypuštěno z hodnocení – t-SNE nelze bezpečně použít pro transform test setu bez úniku.")
